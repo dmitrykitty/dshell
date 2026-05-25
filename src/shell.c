@@ -1,7 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
 #include "shell.h"
 #include "parser.h"
 #include "command.h"
@@ -9,6 +5,13 @@
 #include "history.h"
 #include "shell_state.h"
 #include "utils.h"
+#include "jobs.h"
+#include "executor.h"
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
 
 static void print_args(char** argv){
     int argc = 0;
@@ -26,8 +29,11 @@ void start_shell_loop(){
     ShellState state;
     state.last_status = 0;
     history_init(&state.history);
+    job_table_init(&state.jobs);
 
     while(1){
+        job_table_refresh(&state.jobs);
+
         printf("> "); 
         //to show immediately
         fflush(stdout);
@@ -37,6 +43,8 @@ void start_shell_loop(){
         }
 
         char* trimmed = trim(line);
+        char command_text[MAX_LINE_LENGTH];
+        snprintf(command_text, MAX_LINE_LENGTH, "%s", trimmed); 
 
         if (trimmed[0] == '\0') {
             continue;
@@ -54,8 +62,8 @@ void start_shell_loop(){
             continue;
         }
 
-        print_args(cmd.argv); 
-        int builtin_res = execute_builtin(&cmd, &state); 
+        //print_args(cmd.argv); 
+        BuiltinResult builtin_res = execute_builtin(&cmd, &state); 
 
         if(builtin_res == BUILTIN_EXIT){
             break; 
@@ -64,6 +72,8 @@ void start_shell_loop(){
         if(builtin_res == BUILTIN_DONE){
             continue;
         }
+
+        execute_external(&cmd, &state, command_text);
     }
 
     free(line);

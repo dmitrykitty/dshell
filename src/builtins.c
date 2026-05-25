@@ -1,13 +1,15 @@
 #define MAX_DIR_LENGTH 256
 
+#include "builtins.h"
+#include "shell_state.h"
+#include "history.h"
+#include "jobs.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 
-#include "builtins.h"
-#include "shell_state.h"
-#include "history.h"
 
 //list of env variables 
 extern char** environ;
@@ -122,7 +124,9 @@ static BuiltinResult cmd_history(ShellState* state){
     return BUILTIN_DONE; 
 }
 
-static BuiltinResult cmd_jobs(){
+static BuiltinResult cmd_jobs(ShellState* state){
+    job_table_refresh(&state->jobs);
+    job_table_print(&state->jobs);
     return BUILTIN_DONE; 
 }
 
@@ -170,6 +174,10 @@ BuiltinResult execute_builtin(Command* cmd, ShellState* state){
 
     if(strcmp(cmd->argv[0], "history") == 0) {
         return cmd_history(state);
+    }
+
+    if(strcmp(cmd->argv[0], "jobs") == 0) {
+        return cmd_jobs(state);
     }
 
     return BUILTIN_NOT_FOUND;
