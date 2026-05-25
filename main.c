@@ -14,5 +14,6 @@ int main(int argc, char** argv){
 void print_welcome(){
     printf("----------------------\n");
     printf("Welcome to the DShell!\n");
+    printf("Print 'help' to see all available commands\n");
     printf("----------------------\n");
 }

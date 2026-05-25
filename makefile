@@ -8,7 +8,9 @@ SRCS = main.c \
        src/parser.c \
        src/builtins.c \
        src/history.c \
-       src/utils.c
+       src/utils.c\
+	   src/jobs.c\
+	   src/executor.c
 OBJS = $(SRCS:.c=.o)
 DEPS = $(OBJS:.o=.d)
 
