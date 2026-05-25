@@ -4,6 +4,7 @@
 
 typedef struct {
     char* argv[MAX_ARGS];
+    int argc;
 
     char* input_file;
     char* output_file; 
