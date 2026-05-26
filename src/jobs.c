@@ -86,7 +86,7 @@ void job_table_refresh(JobTable *table){
             job->exit_code = WEXITSTATUS(status);
         } else if(WIFSIGNALED(status)) {
             job->status = JOB_TERMINATED; 
-            job->exit_code = WTERMSIG(status);
+            job->term_signal = WTERMSIG(status);
         }
     }
 }

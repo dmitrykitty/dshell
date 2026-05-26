@@ -4,7 +4,7 @@
 
 void print_welcome(); 
 
-int main(int argc, char** argv){
+int main(void){
     print_welcome();
     
     start_shell_loop(); 

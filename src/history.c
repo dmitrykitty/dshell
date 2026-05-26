@@ -1,8 +1,9 @@
+#include "history.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 
-#include "history.h"
 
 void history_init(History *history){
     if(history == NULL){

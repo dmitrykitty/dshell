@@ -12,16 +12,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-
-static void print_args(char** argv){
-    int argc = 0;
-    while(argv[argc] != NULL){
-        printf("(arg%d: %s) ", argc, argv[argc]);
-        argc++;
-    }
-    printf("\n");
-}
-
 void start_shell_loop(){
     char *line = NULL;
     size_t size = 0;

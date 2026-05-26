@@ -4,11 +4,13 @@
 #include "shell_state.h"
 #include "history.h"
 #include "jobs.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 
 
 //list of env variables 
@@ -66,10 +68,6 @@ static BuiltinResult cmd_cd(Command* cmd){
     return BUILTIN_DONE; 
 }
 
-static BuiltinResult cmd_exit(){
-    return BUILTIN_EXIT; 
-}
-
 static BuiltinResult cmd_env(){
     for(char** env = environ; *env != NULL; env++){
         printf("%s\n", *env);
@@ -117,6 +115,7 @@ static BuiltinResult cmd_printenv(Command* cmd){
     }
 
     printf("%s\n", env);
+    return BUILTIN_DONE;
 }
 
 static BuiltinResult cmd_history(ShellState* state){
@@ -130,8 +129,54 @@ static BuiltinResult cmd_jobs(ShellState* state){
     return BUILTIN_DONE; 
 }
 
-static BuiltinResult cmd_kill(){
-    return BUILTIN_DONE; 
+static BuiltinResult cmd_kill(Command *cmd, ShellState *state){
+    if(cmd->argc != 2){
+        fprintf(stderr, "usage: kill <pid> | %%<job_id>\n");
+        return BUILTIN_DONE;
+    }
+
+    if (state == NULL) {
+        fprintf(stderr, "kill: shell state is not available\n");
+        return BUILTIN_DONE;
+    }
+    pid_t pid; 
+
+    if(cmd->argv[1][0] == '%'){
+        long job_id;
+        if(parse_positive_long(cmd->argv[1] + 1, &job_id) == 0){
+            fprintf(stderr, "kill: invalid job id: %s\n", cmd->argv[1]);
+            return BUILTIN_DONE;
+        }
+        
+        Job* job = job_table_find_by_id(&state->jobs, job_id);
+
+        if(job == NULL){
+            fprintf(stderr, "kill: no such job: %s\n", cmd->argv[1]);
+            return BUILTIN_DONE;
+        }
+
+        if (job->status != JOB_RUNNING) {
+            fprintf(stderr, "kill: job is not running: %s\n", cmd->argv[1]);
+            return BUILTIN_DONE;
+        }
+
+        pid = job->pid; 
+    } else {
+        long job_pid;
+        if(parse_positive_long(cmd->argv[1], &job_pid) == 0){
+            fprintf(stderr, "kill: invalid job pid: %s\n", cmd->argv[1]);
+            return BUILTIN_DONE;
+        }
+
+        pid = (pid_t) job_pid;
+    }
+
+    if (kill(pid, SIGTERM) != 0) {
+        perror("kill");
+        return BUILTIN_DONE;
+    }
+
+    return BUILTIN_DONE;
 }
 
 
@@ -180,6 +225,9 @@ BuiltinResult execute_builtin(Command* cmd, ShellState* state){
         return cmd_jobs(state);
     }
 
-    return BUILTIN_NOT_FOUND;
+    if(strcmp(cmd->argv[0], "kill") == 0) {
+        return cmd_kill(cmd, state);
+    }
 
+    return BUILTIN_NOT_FOUND;
 }
