@@ -3,7 +3,39 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
 
+
+static int write_all(int fd, const char *buffer, size_t length) {
+    while (length > 0) {
+        //partitial write posiible so while loop needed
+        //ssize save amount of bytes or -1 as error
+        ssize_t written = write(fd, buffer, length);
+
+        if (written == -1) {
+            //stopped by signal SIGINT
+            if (errno == EINTR) {
+                continue;
+            }
+
+            return -1;
+        }
+
+        if (written == 0) {
+            //non typical IO error 
+            errno = EIO;
+            return -1;
+        }
+
+        buffer += written;
+        length -= (size_t) written;
+    }
+
+    return 0;
+}
 
 void history_init(History *history){
     if(history == NULL){
@@ -44,4 +76,90 @@ void history_print(const History *history){
         int idx = (history->head + i) % MAX_HISTORY; 
         printf("%ld %s\n", cur_number + i, history->lines[idx]);
     }
+}
+
+int history_default_path(char *buffer, size_t size){
+    if (buffer == NULL || size == 0) {
+        return -1;
+    }
+    const char* home = getenv("HOME");
+    int written; 
+
+    if(home != NULL && home[0] != '\0'){
+        written = snprintf(buffer, size, "%s/%s", home, HISTORY_FILE_NAME);
+    } else {
+        written = snprintf(buffer, size, "%s", HISTORY_FILE_NAME);
+    }
+
+    if(written < 0 || (size_t)written >= size){
+        errno = ENAMETOOLONG; 
+        return -1; 
+    }
+    return 0; 
+}
+
+void history_load(History *history, const char *path){
+    if(history == NULL || path == NULL || path[0] == '\0'){
+        return;
+    }
+
+    FILE* file = fopen(path, "r");
+    if (file == NULL) {
+        if (errno != ENOENT) {
+            perror(path);
+        }
+        //if not exists yet - not mistake 
+        return;
+    }
+
+    char line[MAX_LINE_LENGTH]; 
+
+    //in the end of line fgets added \n if it possible 
+    while(fgets(line, MAX_LINE_LENGTH, file) != NULL){
+        char *newline = strchr(line, '\n');
+
+        if (newline != NULL) {
+            *newline = '\0';
+        }
+
+        if(line[0] != '\0'){
+            history_add(history, line);
+        }
+    }
+
+    //fgets returns NULL in 2 cases: 
+    //  - EOF
+    //  - error
+    // so perror helps to recognize it 
+    if(ferror(file)){
+        perror(path);
+    }
+
+    fclose(file);
+}
+
+int history_save_line(const char *path, const char *line) {
+    if (path == NULL || path[0] == '\0' || line == NULL || line[0] == '\0') {
+        return 0;
+    }
+
+    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd == -1) {
+        perror(path);
+        return -1;
+    }
+
+    //writing entire command with new line 
+    if (write_all(fd, line, strlen(line)) == -1 || write_all(fd, "\n", 1) == -1) {
+        perror(path);
+        close(fd);
+        return -1;
+    }
+
+    if (close(fd) == -1) {
+        perror(path);
+        return -1;
+    }
+
+    return 0;
 }

@@ -25,6 +25,14 @@ void start_shell_loop(){
     job_table_init(&state.jobs);
     signals_init();
 
+    char history_path[MAX_LINE_LENGTH];
+    if (history_default_path(history_path, MAX_LINE_LENGTH) == 0) {
+        history_load(&state.history, history_path);
+    } else {
+        perror("history path");
+        history_path[0] = '\0';
+    }
+
     while(1){
         if (signals_has_sigchld()) {
             signals_clear_sigchld();
@@ -53,6 +61,8 @@ void start_shell_loop(){
         }
 
         history_add(&state.history, trimmed);
+        history_save_line(history_path, trimmed);
+        
         Pipeline pipeline;
 
         if(parse_pipeline(trimmed, &pipeline) != 1){
