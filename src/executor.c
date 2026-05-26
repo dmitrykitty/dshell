@@ -119,3 +119,115 @@ int execute_external(Command* cmd, ShellState* state, const char* command_text){
 
     return state->last_status;
 }
+
+int execute_pipeline(Pipeline *pipeline, ShellState *state){
+    if (pipeline == NULL || state == NULL) {
+        return -1;
+    }
+
+    if (pipeline->left.argv[0] == NULL || pipeline->right.argv[0] == NULL) {
+        return -1;
+    }
+
+    if (pipeline->left.output_file != NULL) {
+        fprintf(stderr, "parse error: output redirection on left side of pipe is not supported\n");
+        return -1;
+    }
+
+    if (pipeline->right.input_file != NULL) {
+        fprintf(stderr, "parse error: input redirection on right side of pipe is not supported\n");
+        return -1;
+    }
+
+    int pipefd[2]; 
+
+    // pipefd[0] is the read end of the pipe.
+    // pipefd[1] is the write end of the pipe.
+    if(pipe(pipefd) == -1){
+        perror("pipe");
+        return -1; 
+    }
+
+    pid_t left_pid = fork();
+
+    if (left_pid < 0) {
+        perror("fork");
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return -1;
+    }
+
+    //inside left child process
+    //we are redirecting standart output from here to pipefd[1]
+    if(left_pid == 0){
+        if(dup2(pipefd[1], STDOUT_FILENO) == -1){
+            perror("dup2");
+            _exit(1);
+        }
+
+        close(pipefd[0]);
+        close(pipefd[1]);
+
+        if(setup_redirection(&pipeline->left) != 0){
+            _exit(1);
+        }
+        execvp(pipeline->left.argv[0], pipeline->left.argv);
+        perror(pipeline->left.argv[0]);
+        //command not found / exec failed
+        _exit(127);
+    }
+
+    pid_t right_pid = fork();
+
+    if (right_pid < 0) {
+        perror("fork");
+        close(pipefd[0]);
+        close(pipefd[1]);
+        waitpid(left_pid, NULL, 0);
+        return -1;
+    }
+
+    //inside right child process
+    //we are redirecting standart input to take info from pipefd[0]
+    if(right_pid == 0){
+        if(dup2(pipefd[0], STDIN_FILENO) == -1){
+            perror("dup2");
+            _exit(1);
+        }
+
+        close(pipefd[0]);
+        close(pipefd[1]);
+
+        if (setup_redirection(&pipeline->right) != 0) {
+            _exit(1);
+        }
+
+        execvp(pipeline->right.argv[0], pipeline->right.argv);
+        perror(pipeline->right.argv[0]);
+        _exit(127);
+    }
+
+    close(pipefd[0]);
+    close(pipefd[1]);
+
+    int left_status;
+    int right_status;
+
+    if (waitpid(left_pid, &left_status, 0) == -1) {
+        perror("waitpid");
+        return -1;
+    }
+
+    if (waitpid(right_pid, &right_status, 0) == -1) {
+        perror("waitpid");
+        return -1;
+    }
+
+    if (WIFEXITED(right_status)) {
+        state->last_status = WEXITSTATUS(right_status);
+    } else if (WIFSIGNALED(right_status)) {
+        state->last_status = 128 + WTERMSIG(right_status);
+    }
+
+    return state->last_status;
+}

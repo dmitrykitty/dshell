@@ -1,5 +1,5 @@
 #define MAX_HISTORY 256
-#define MAX_LINE_LENGTH 256
+#define MAX_LINE_LENGTH 1024
 
 #pragma once 
 

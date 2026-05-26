@@ -41,19 +41,25 @@ void start_shell_loop(){
         }
 
         history_add(&state.history, trimmed);
+        Pipeline pipeline;
 
-        Command cmd;
-
-        if(parse_command(trimmed, &cmd) != 1){
+        if(parse_pipeline(trimmed, &pipeline) != 1){
             continue;
         }
 
-        if(cmd.argv[0] == NULL){
+        Command* cmd = &pipeline.left;
+
+        if(pipeline.has_pipe){
+            execute_pipeline(&pipeline, &state);
+            continue;
+        }
+
+        if(cmd->argv[0] == NULL){
             continue;
         }
 
         //print_args(cmd.argv); 
-        BuiltinResult builtin_res = execute_builtin(&cmd, &state); 
+        BuiltinResult builtin_res = execute_builtin(cmd, &state); 
 
         if(builtin_res == BUILTIN_EXIT){
             break; 
@@ -63,7 +69,7 @@ void start_shell_loop(){
             continue;
         }
 
-        execute_external(&cmd, &state, command_text);
+        execute_external(cmd, &state, command_text);
     }
 
     free(line);

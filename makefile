@@ -2,6 +2,8 @@ CC = gcc
 CFLAGS = -Wall -Wextra -std=c11
 CPPFLAGS = -D_POSIX_C_SOURCE=200809L -I./include
 
+DEBUG_FLAGS = -g3 -O0 -DDEBUG
+
 TARGET = dshell
 SRCS = main.c \
        src/shell.c \
@@ -22,6 +24,9 @@ $(TARGET): $(OBJS)
 
 clean:
 	rm -f $(TARGET) $(OBJS) $(DEPS) *.o *.d *.log
+
+debug: CFLAGS += $(DEBUG_FLAGS)
+debug: clean $(TARGET)
 
 .PHONY: clean
 

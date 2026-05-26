@@ -1,4 +1,5 @@
 #include "command.h"
+#include "pipeline.h"
 
 #include <string.h>
 #include <ctype.h>
@@ -67,14 +68,14 @@ int parse_command(char *line, Command *cmd) {
                 return 0;
             }
 
-            if(cmd->input_file != NULL){
+            if(cmd->output_file != NULL){
                 fprintf(stderr, "parse error: duplicate output redirection\n");
                 return 0;
             }
 
             cmd->append_output = append; 
             cmd->output_file = token; 
-            token = strtok(NULL, "\t");
+            token = strtok(NULL, " \t");
             continue;
         }
 
@@ -85,4 +86,39 @@ int parse_command(char *line, Command *cmd) {
     cmd->argv[argc] = NULL; 
     cmd->argc = argc; 
     return argc > 0; 
+}
+
+int parse_pipeline(char* line, Pipeline* pipeline){
+    char* pipe_pos = strchr(line, '|'); 
+
+    if(pipe_pos == NULL){
+        pipeline->has_pipe = 0;
+        return parse_command(line, &pipeline->left);
+    }
+
+    pipeline->has_pipe = 1; 
+    *pipe_pos = '\0';
+
+    char* left_line = line; 
+    char* right_line = pipe_pos + 1; 
+
+    if (strchr(right_line, '|') != NULL) {
+        fprintf(stderr, "parse error: only one pipe is supported\n");
+        return 0;
+    }
+
+    if(parse_command(left_line, &pipeline->left) == 0){
+        return 0;
+    }
+
+    if(parse_command(right_line, &pipeline->right) == 0){
+        return 0;
+    }
+
+    if (pipeline->left.background || pipeline->right.background) {
+        fprintf(stderr, "parse error: background pipelines are not supported yet\n");
+        return 0;
+    }
+
+    return 1;
 }
