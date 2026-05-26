@@ -104,7 +104,7 @@ static BuiltinResult cmd_unsetenv(Command* cmd){
 
 static BuiltinResult cmd_printenv(Command* cmd){
     if (cmd->argc != 2){
-        fprintf(stderr, "usage: unsetenv <NAME>\n");
+        fprintf(stderr, "usage: printenv <NAME>\n");
         return BUILTIN_DONE;
     } 
 

@@ -8,7 +8,7 @@ int main(void){
     print_welcome();
     
     start_shell_loop(); 
-    return 1; 
+    return 0; 
 }
 
 void print_welcome(){
