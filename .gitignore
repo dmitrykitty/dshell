@@ -4,3 +4,8 @@ dshell
 .sixth
 .codex
 .agents
+
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
