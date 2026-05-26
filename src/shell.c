@@ -7,10 +7,12 @@
 #include "utils.h"
 #include "jobs.h"
 #include "executor.h"
+#include "signals.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
 void start_shell_loop(){
     char *line = NULL;
@@ -18,17 +20,27 @@ void start_shell_loop(){
 
     ShellState state;
     state.last_status = 0;
+
     history_init(&state.history);
     job_table_init(&state.jobs);
+    signals_init();
 
     while(1){
-        job_table_refresh(&state.jobs);
+        if (signals_has_sigchld()) {
+            signals_clear_sigchld();
+            job_table_refresh(&state.jobs);
+        }
 
         printf("> "); 
         //to show immediately
         fflush(stdout);
 
         if(getline(&line, &size, stdin) == -1){
+            //interrupted syscall occured
+            if(errno == EINTR){
+                clearerr(stdin);
+                continue;
+            }
             break;
         }
 

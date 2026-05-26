@@ -1,10 +1,12 @@
 #include "executor.h"
+#include "signals.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 
 static int setup_input_redirection(const Command* cmd){
     if(cmd->input_file == NULL){
@@ -89,6 +91,9 @@ int execute_external(Command* cmd, ShellState* state, const char* command_text){
 
     //child process
     if(pid == 0){
+        //reset signalsd config inside current (child) process
+        signals_restore_defaults_for_child();
+
         if(setup_redirection(cmd) != 0){
             _exit(1);
         }
@@ -106,7 +111,15 @@ int execute_external(Command* cmd, ShellState* state, const char* command_text){
     }
 
     int status; 
-    if(waitpid(pid, &status, 0) == -1){
+    pid_t waited;
+
+    //waitpid could be interrupted with EINTR so we repeat it
+    do {
+        waited = waitpid(pid, &status, 0);
+    } while(waited == -1 && errno == EINTR);
+
+
+    if(waited == -1){
         perror("waitpid");
         return -1;
     }
@@ -158,8 +171,11 @@ int execute_pipeline(Pipeline *pipeline, ShellState *state){
     }
 
     //inside left child process
+    //reset of configuration for the signals
     //we are redirecting standart output from here to pipefd[1]
     if(left_pid == 0){
+        signals_restore_defaults_for_child();
+
         if(dup2(pipefd[1], STDOUT_FILENO) == -1){
             perror("dup2");
             _exit(1);
@@ -188,8 +204,11 @@ int execute_pipeline(Pipeline *pipeline, ShellState *state){
     }
 
     //inside right child process
+    //reset of configuration for the signals
     //we are redirecting standart input to take info from pipefd[0]
     if(right_pid == 0){
+        signals_restore_defaults_for_child();
+
         if(dup2(pipefd[0], STDIN_FILENO) == -1){
             perror("dup2");
             _exit(1);
@@ -213,12 +232,23 @@ int execute_pipeline(Pipeline *pipeline, ShellState *state){
     int left_status;
     int right_status;
 
-    if (waitpid(left_pid, &left_status, 0) == -1) {
+    pid_t waited_left;
+    pid_t waited_right;
+
+    do {
+        waited_left = waitpid(left_pid, &left_status, 0);
+    } while (waited_left == -1 && errno == EINTR);
+
+    if (waited_left == -1) {
         perror("waitpid");
         return -1;
     }
 
-    if (waitpid(right_pid, &right_status, 0) == -1) {
+    do {
+        waited_right = waitpid(right_pid, &right_status, 0);
+    } while (waited_right == -1 && errno == EINTR);
+
+    if (waited_right == -1) {
         perror("waitpid");
         return -1;
     }
