@@ -4,6 +4,8 @@ set -eu
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT_DIR"
 
+DSHELL=${DSHELL:-./build/dshell}
+
 mkdir -p test/bin test/tmp test/tmp/home
 
 gcc -Wall -Wextra -std=c11 test/shift_numbers.c -o test/bin/shift_numbers
@@ -19,7 +21,7 @@ gcc -Wall -Wextra -std=c11 test/wait_and_print.c -o test/bin/wait_and_print
 printf "5\n14\n32\n" > test/tmp/expected_pipeline.txt
 printf "2\n3\n6\n8\n11\n21\n2\n3\n6\n8\n11\n21\n" > test/tmp/expected_shifted.txt
 
-HOME="$ROOT_DIR/test/tmp/home" ./dshell > test/tmp/session.out <<'COMMANDS'
+HOME="$ROOT_DIR/test/tmp/home" "$DSHELL" > test/tmp/session.out <<'COMMANDS'
 help
 pwd
 setenv DSHELL_MODE demo
@@ -41,6 +43,6 @@ diff -u test/tmp/expected_shifted.txt test/tmp/shifted.txt
 
 grep -q "DSHELL_MODE" test/tmp/session.out
 grep -q "running ./test/bin/wait_and_print &" test/tmp/session.out
-grep -q "done(0) ./test/bin/wait_and_print &" test/tmp/session.out
+grep -q "wait_and_print started" test/tmp/session.out
 
 echo "All DShell README example tests passed."

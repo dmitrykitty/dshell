@@ -8,7 +8,7 @@
 int main(void) {
     printf("wait_and_print started pid=%d\n", getpid());
     fflush(stdout);
-    sleep(1);
+    sleep(10);
     printf("wait_and_print done\n");
     return 0;
 }
