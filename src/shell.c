@@ -14,6 +14,10 @@
 #include <stdlib.h>
 #include <errno.h>
 
+/*
+ * Main REPL for dshell.
+ * Owns process-wide shell state: history, jobs, signal handlers and logger.
+ */
 void start_shell_loop(){
     char *line = NULL;
     size_t size = 0;
@@ -28,10 +32,12 @@ void start_shell_loop(){
     if (logger_init(&state.logger, ".dshell.log") != 0) {
         fprintf(stderr, "warning: logger disabled\n");
     }
+    logger_log(&state.logger, "shell started");
 
     char history_path[MAX_LINE_LENGTH];
     if (history_default_path(history_path, MAX_LINE_LENGTH) == 0) {
         history_load(&state.history, history_path);
+        logger_logf(&state.logger, "history loaded: %s", history_path);
     } else {
         perror("history path");
         history_path[0] = '\0';
@@ -48,7 +54,7 @@ void start_shell_loop(){
         fflush(stdout);
 
         if(getline(&line, &size, stdin) == -1){
-            //interrupted syscall occured
+            //interrupted syscall occurred
             if(errno == EINTR){
                 clearerr(stdin);
                 continue;
@@ -71,6 +77,7 @@ void start_shell_loop(){
         Pipeline pipeline;
 
         if(parse_pipeline(trimmed, &pipeline) != 1){
+            logger_logf(&state.logger, "parse failed: %s", command_text);
             continue;
         }
 
@@ -89,6 +96,7 @@ void start_shell_loop(){
         BuiltinResult builtin_res = execute_builtin(cmd, &state); 
 
         if(builtin_res == BUILTIN_EXIT){
+            logger_log(&state.logger, "exit requested");
             break; 
         }
 

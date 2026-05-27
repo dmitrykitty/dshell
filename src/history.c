@@ -81,13 +81,13 @@ void history_load(History *history, const char *path){
         if (errno != ENOENT) {
             perror(path);
         }
-        //if not exists yet - not mistake 
+        //if it does not exist yet, it is not an error
         return;
     }
 
     char line[MAX_LINE_LENGTH]; 
 
-    //in the end of line fgets added \n if it possible 
+    //fgets keeps '\n' at the end of line when it fits in the buffer
     while(fgets(line, MAX_LINE_LENGTH, file) != NULL){
         char *newline = strchr(line, '\n');
 

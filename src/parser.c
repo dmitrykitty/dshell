@@ -14,6 +14,10 @@ static int parse_redirection_target(char **next_token, const char *operator_name
     return 1;
 }
 
+/*
+ * Parse one simple command.
+ * This parser is intentionally whitespace-based: no quotes, escapes or globbing.
+ */
 int parse_command(char *line, Command *cmd) {
     int argc = 0;
     cmd->input_file = NULL;
@@ -21,7 +25,7 @@ int parse_command(char *line, Command *cmd) {
     cmd->append_output = 0;
     cmd->background = 0;
 
-    //divide by " " into separate strings
+    //split by spaces and tabs into separate tokens
     char* token = strtok(line, " \t");
     while(token != NULL && argc < MAX_ARGS - 1){
         if (strcmp(token, "&") == 0) {
@@ -41,7 +45,7 @@ int parse_command(char *line, Command *cmd) {
         argv = [echo, hello, NULL] and cmd.input/output = name
         */
         if (strcmp(token, "<") == 0){
-            //theoretically name of the file to be redirected
+            //next token must be the file used as stdin
             token = strtok(NULL, " \t");
 
             if(parse_redirection_target(&token, "<") == 0){
@@ -61,7 +65,7 @@ int parse_command(char *line, Command *cmd) {
         if (strcmp(token, ">") == 0 || strcmp(token, ">>") == 0) {
             int append = (strcmp(token, ">>") == 0); 
 
-            //theoretically name of the file to be redirected
+            //next token must be the file used as stdout
             token = strtok(NULL, " \t");
 
             if(parse_redirection_target(&token, (append ? ">>" : ">")) == 0){
@@ -88,6 +92,10 @@ int parse_command(char *line, Command *cmd) {
     return argc > 0; 
 }
 
+/*
+ * Split a line into either one command or a two-command pipeline.
+ * dshell currently supports one pipe, so "a | b | c" is rejected.
+ */
 int parse_pipeline(char* line, Pipeline* pipeline){
     char* pipe_pos = strchr(line, '|'); 
 

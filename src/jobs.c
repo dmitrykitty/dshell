@@ -5,6 +5,10 @@
 #include <string.h>
 #include <sys/wait.h>
 
+/*
+ * Initialize the in-memory table used for background jobs.
+ * Completed jobs stay in the table so the user can still see them with jobs.
+ */
 void job_table_init(JobTable* table){
     if (table == NULL) {
         return;
@@ -14,6 +18,10 @@ void job_table_init(JobTable* table){
     table->next_id = 1;
 }
 
+/*
+ * Add a newly-started background process.
+ * The command string is copied because the parser buffer is reused next loop.
+ */
 Job* job_table_add(JobTable* table, pid_t pid, const char* command){
     if (table == NULL || command == NULL) {
         return NULL;
@@ -37,6 +45,9 @@ Job* job_table_add(JobTable* table, pid_t pid, const char* command){
     return job; 
 }
 
+/*
+ * Find a job by the shell job id used by commands like kill %1.
+ */
 Job* job_table_find_by_id(JobTable* table, int id){
     if (table == NULL) {
         return NULL;
@@ -51,6 +62,10 @@ Job* job_table_find_by_id(JobTable* table, int id){
     return NULL;
 }
 
+/*
+ * Poll running background jobs without blocking the shell.
+ * waitpid(..., WNOHANG) also reaps finished children to avoid zombies.
+ */
 void job_table_refresh(JobTable *table){
     if(table == NULL){
         return;
@@ -71,7 +86,7 @@ void job_table_refresh(JobTable *table){
         }
 
         if (result == -1) {
-            //no child process exists
+            //No child process exists for this pid, so treat it as no longer running.
             if (errno == ECHILD) {
                 job->status = JOB_DONE;
             } else {
@@ -91,6 +106,9 @@ void job_table_refresh(JobTable *table){
     }
 }
 
+/*
+ * Print all known jobs, including completed ones.
+ */
 void job_table_print(const JobTable *table){
     if (table == NULL) {
         return;
@@ -102,6 +120,9 @@ void job_table_print(const JobTable *table){
     }
 }
 
+/*
+ * Print one job in a compact shell-like format.
+ */
 void job_print(const Job* job){
     if (job->status == JOB_RUNNING) {
         printf("[%d] %d running %s\n", job->id, job->pid, job->command);

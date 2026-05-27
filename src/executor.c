@@ -13,21 +13,21 @@ static int setup_input_redirection(const Command* cmd){
         return 0;
     }
 
-    //getting file descriptor
+    //open input file and get its file descriptor
     int fd = open(cmd->input_file, O_RDONLY);
     if(fd == -1){
         perror(cmd->input_file);
         return -1;
     }
 
-    //everything what was read from terminal before now read from file 
+    //everything that was read from terminal before now read from file
     // stdin -> terminal 
     // fd -> name_of_file.txt
     //after dup2
     // stdin -> name_of_file.txt
     // fd -> name_of_file.txt
 
-    //and after cloasinng fd only stdin -> name_of_file.txt left
+    //and after closing fd only stdin -> name_of_file.txt left
     if(dup2(fd, STDIN_FILENO) == -1){
         perror("dup2");
         close(fd);
@@ -46,7 +46,7 @@ static int setup_output_redirection(const Command* cmd){
     int flags = O_WRONLY | O_CREAT; 
     flags |= cmd->append_output ? O_APPEND : O_TRUNC;
 
-    //chmod for created file
+    //mode for a newly created output file
     int fd = open(cmd->output_file, flags, 0644); 
     if(fd == -1){
         perror(cmd->output_file);
@@ -75,8 +75,10 @@ static int setup_redirection(const Command* cmd){
     return 0;
 }
 
-
-
+/*
+ * Run one external command in a child process.
+ * Parent waits for foreground commands or records background jobs.
+ */
 int execute_external(Command* cmd, ShellState* state, const char* command_text){
     if (cmd == NULL || cmd->argv[0] == NULL || state == NULL) {
         return -1;
@@ -91,7 +93,7 @@ int execute_external(Command* cmd, ShellState* state, const char* command_text){
 
     //child process
     if(pid == 0){
-        //reset signalsd config inside current (child) process
+        //reset signals config inside current (child) process
         signals_restore_defaults_for_child();
 
         if(setup_redirection(cmd) != 0){
@@ -105,7 +107,7 @@ int execute_external(Command* cmd, ShellState* state, const char* command_text){
 
     logger_logf(&state->logger, "external started: pid=%d command=%s", pid, command_text);
 
-    //main process
+    //parent process
     if(cmd->background){
         const Job* job = job_table_add(&state->jobs, pid, command_text);
 
@@ -128,8 +130,6 @@ int execute_external(Command* cmd, ShellState* state, const char* command_text){
         waited = waitpid(pid, &status, 0);
     } while(waited == -1 && errno == EINTR);
 
-    logger_logf(&state->logger, "external finished: pid=%d status=%d command=%s", pid, state->last_status, command_text);
-
     if(waited == -1){
         perror("waitpid");
         return -1;
@@ -141,9 +141,15 @@ int execute_external(Command* cmd, ShellState* state, const char* command_text){
         state->last_status = 128 + WTERMSIG(status);
     }
 
+    logger_logf(&state->logger, "external finished: pid=%d status=%d command=%s", pid, state->last_status, command_text);
+
     return state->last_status;
 }
 
+/*
+ * Execute a two-command pipeline: left stdout is connected to right stdin.
+ * Redirections are still applied inside the proper child after dup2().
+ */
 int execute_pipeline(Pipeline *pipeline, ShellState *state){
     if (pipeline == NULL || state == NULL) {
         return -1;
@@ -163,7 +169,7 @@ int execute_pipeline(Pipeline *pipeline, ShellState *state){
         return -1;
     }
 
-    logger_log(&state->logger, "pipeline started");
+    logger_logf(&state->logger, "pipeline started: %s | %s", pipeline->left.argv[0], pipeline->right.argv[0]);
     int pipefd[2]; 
 
     // pipefd[0] is the read end of the pipe.
@@ -185,7 +191,7 @@ int execute_pipeline(Pipeline *pipeline, ShellState *state){
 
     //inside left child process
     //reset of configuration for the signals
-    //we are redirecting standart output from here to pipefd[1]
+    //we are redirecting standard output from here to pipefd[1]
     if(left_pid == 0){
         signals_restore_defaults_for_child();
 
@@ -218,7 +224,7 @@ int execute_pipeline(Pipeline *pipeline, ShellState *state){
 
     //inside right child process
     //reset of configuration for the signals
-    //we are redirecting standart input to take info from pipefd[0]
+    //we are redirecting standard input to take info from pipefd[0]
     if(right_pid == 0){
         signals_restore_defaults_for_child();
 

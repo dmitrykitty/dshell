@@ -1,4 +1,5 @@
 #include "logger.h"
+#include "utils.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -8,6 +9,8 @@
 #include <time.h>
 #include <unistd.h>
 
+static void logger_write_message(Logger *logger, const char *message);
+static int logger_pop(Logger *logger, char *buffer, size_t size);
 
 static void *logger_thread_main(void *arg) {
     Logger *logger = (Logger *) arg;
@@ -25,7 +28,7 @@ static void *logger_thread_main(void *arg) {
         }
 
         pthread_mutex_lock(&logger->mutex);
-        //checking if any messages available and loger still working 
+        //checking if any messages available and logger still working
         int should_stop = logger->stop_requested && logger->count == 0;
         pthread_mutex_unlock(&logger->mutex);
 
@@ -81,6 +84,10 @@ static int logger_pop(Logger *logger, char *buffer, size_t size) {
     return 1;
 }
 
+/*
+ * Start the asynchronous logger.
+ * The shell thread only enqueues messages; this worker writes them to disk.
+ */
 int logger_init(Logger *logger, const char *path) {
     if (logger == NULL || path == NULL || path[0] == '\0') {
         return -1;
@@ -161,7 +168,7 @@ void logger_logf(Logger *logger, const char *format, ...){
     char message[LOGGER_MESSAGE_LENGTH];
 
     va_list args;
-    //list of arguments stats after format variable
+    //list of arguments starts after format variable
     va_start(args, format);
     int written = vsnprintf(message, sizeof(message), format, args);
     va_end(args);

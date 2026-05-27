@@ -1,4 +1,4 @@
-#include "signal.h"
+#include "signals.h"
 
 #include <signal.h>
 #include <string.h>
@@ -7,7 +7,7 @@
 
 static volatile sig_atomic_t sigchld_received = 0;
 
-//handle sigint and printing only new line
+//Handle Ctrl+C in the shell process by printing a newline.
 static void handle_sigint(int signo) {
     (void) signo;
     
@@ -17,7 +17,7 @@ static void handle_sigint(int signo) {
     write(STDOUT_FILENO, &newline, 1);
 }
 
-//change global flag value after child process changed the state
+//Set a flag when a child process exits or is terminated.
 static void handle_sigchld(int signo) {
     (void) signo;
     sigchld_received = 1;
@@ -26,19 +26,20 @@ static void handle_sigchld(int signo) {
 void signals_init(void){
 
     struct sigaction sa_int;
-    //clean up
+    //initialize all fields before setting the handler
     memset(&sa_int, 0, sizeof(sa_int));
 
     sa_int.sa_handler = handle_sigint;
 
-    //sa_mask keep what signal should be blocked
+    //sa_mask keeps signals that should be blocked during the handler
     //so we keep mask empty to not block any other signals
     sigemptyset(&sa_int.sa_mask);
 
-    //Do not use SA_RESTART for SIGINT. This allows getline() to return with EINTR after Ctrl+C, so the shell can redraw the prompt.
+    //Do not use SA_RESTART for SIGINT. This allows getline() to return
+    //with EINTR after Ctrl+C, so the shell can redraw the prompt.
     sa_int.sa_flags = 0;
 
-    //save configuration for SIGINT signall
+    //install configuration for SIGINT signal
     if (sigaction(SIGINT, &sa_int, NULL) == -1) {
         perror("sigaction SIGINT");
     }
@@ -56,7 +57,7 @@ void signals_init(void){
     }
 }
 
-//to reset signals configuration for child processes because before it was inherited from base process 
+//Reset signal configuration for child processes because they inherit it from the shell.
 void signals_restore_defaults_for_child(void){
     signal(SIGINT, SIG_DFL);
     signal(SIGCHLD, SIG_DFL);

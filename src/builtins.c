@@ -180,6 +180,11 @@ static BuiltinResult cmd_kill(Command *cmd, ShellState *state){
 }
 
 
+/*
+ * Execute built-ins in the shell process.
+ * This is required for commands like cd/setenv because child changes would not
+ * affect the parent shell.
+ */
 BuiltinResult execute_builtin(Command* cmd, ShellState* state){
     if (cmd == NULL || cmd->argv[0] == NULL) {
         return BUILTIN_NOT_FOUND;

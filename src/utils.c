@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <unistd.h>
 
 
 char* trim(char* line){
@@ -52,12 +53,12 @@ int parse_positive_long(const char *text, long *result) {
 
 int write_all(int fd, const char *buffer, size_t length) {
     while (length > 0) {
-        //partitial write posiible so while loop needed
-        //ssize save amount of bytes or -1 as error
+        //partial write is possible, so while loop is needed
+        //ssize_t saves amount of bytes or -1 as error
         ssize_t written = write(fd, buffer, length);
 
         if (written == -1) {
-            //stopped by signal SIGINT
+            //interrupted by a caught signal
             if (errno == EINTR) {
                 continue;
             }
@@ -66,7 +67,7 @@ int write_all(int fd, const char *buffer, size_t length) {
         }
 
         if (written == 0) {
-            //non typical IO error 
+            //non typical IO error
             errno = EIO;
             return -1;
         }
