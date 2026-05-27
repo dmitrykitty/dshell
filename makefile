@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c11
+CFLAGS = -Wall -Wextra -std=c11 -pthread
 CPPFLAGS = -D_POSIX_C_SOURCE=200809L -I./include
 
 DEBUG_FLAGS = -g3 -O0 -DDEBUG
@@ -13,7 +13,8 @@ SRCS = main.c \
        src/utils.c \
 	   src/jobs.c \
 	   src/executor.c \
-	   src/signals.c
+	   src/signals.c \
+	   src/logger.c
 
 OBJS = $(SRCS:.c=.o)
 DEPS = $(OBJS:.o=.d)
@@ -30,6 +31,6 @@ clean:
 debug: CFLAGS += $(DEBUG_FLAGS)
 debug: clean $(TARGET)
 
-.PHONY: clean
+.PHONY: clean debug
 
 -include $(DEPS)

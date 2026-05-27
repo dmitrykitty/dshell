@@ -1,4 +1,5 @@
 #include "history.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -8,34 +9,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-
-static int write_all(int fd, const char *buffer, size_t length) {
-    while (length > 0) {
-        //partitial write posiible so while loop needed
-        //ssize save amount of bytes or -1 as error
-        ssize_t written = write(fd, buffer, length);
-
-        if (written == -1) {
-            //stopped by signal SIGINT
-            if (errno == EINTR) {
-                continue;
-            }
-
-            return -1;
-        }
-
-        if (written == 0) {
-            //non typical IO error 
-            errno = EIO;
-            return -1;
-        }
-
-        buffer += written;
-        length -= (size_t) written;
-    }
-
-    return 0;
-}
 
 void history_init(History *history){
     if(history == NULL){

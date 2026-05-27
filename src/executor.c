@@ -103,9 +103,19 @@ int execute_external(Command* cmd, ShellState* state, const char* command_text){
         _exit(127);
     }
 
+    logger_logf(&state->logger, "external started: pid=%d command=%s", pid, command_text);
+
     //main process
     if(cmd->background){
         const Job* job = job_table_add(&state->jobs, pid, command_text);
+
+        if (job == NULL) {
+            logger_logf(&state->logger, "background job add failed: pid=%d command=%s", pid, command_text);
+            fprintf(stderr, "failed to add background job\n");
+            return -1;
+        }
+
+        logger_logf(&state->logger, "background job started: pid=%d command=%s", pid, command_text);
         job_print(job);
         return 0;
     }
@@ -118,6 +128,7 @@ int execute_external(Command* cmd, ShellState* state, const char* command_text){
         waited = waitpid(pid, &status, 0);
     } while(waited == -1 && errno == EINTR);
 
+    logger_logf(&state->logger, "external finished: pid=%d status=%d command=%s", pid, state->last_status, command_text);
 
     if(waited == -1){
         perror("waitpid");
@@ -152,6 +163,7 @@ int execute_pipeline(Pipeline *pipeline, ShellState *state){
         return -1;
     }
 
+    logger_log(&state->logger, "pipeline started");
     int pipefd[2]; 
 
     // pipefd[0] is the read end of the pipe.
@@ -160,6 +172,7 @@ int execute_pipeline(Pipeline *pipeline, ShellState *state){
         perror("pipe");
         return -1; 
     }
+
 
     pid_t left_pid = fork();
 
@@ -259,5 +272,6 @@ int execute_pipeline(Pipeline *pipeline, ShellState *state){
         state->last_status = 128 + WTERMSIG(right_status);
     }
 
+    logger_logf(&state->logger, "pipeline finished: status=%d", state->last_status);
     return state->last_status;
 }
