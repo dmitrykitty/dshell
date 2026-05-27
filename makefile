@@ -4,7 +4,8 @@ CPPFLAGS = -D_POSIX_C_SOURCE=200809L -I./include
 
 DEBUG_FLAGS = -g3 -O0 -DDEBUG
 
-TARGET = dshell
+BUILD_DIR = build
+TARGET = $(BUILD_DIR)/dshell
 SRCS = main.c \
        src/shell.c \
        src/parser.c \
@@ -16,17 +17,21 @@ SRCS = main.c \
 	   src/signals.c \
 	   src/logger.c
 
-OBJS = $(SRCS:.c=.o)
+OBJS = $(addprefix $(BUILD_DIR)/,$(SRCS:.c=.o))
 DEPS = $(OBJS:.o=.d)
 
 $(TARGET): $(OBJS)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET)
 
-%.o: %.c
+$(BUILD_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
 clean:
-	rm -f $(TARGET) $(OBJS) $(DEPS) *.o *.d *.log
+	rm -rf $(BUILD_DIR)
+	rm -rf src/bin
+	rm -f dshell main.o main.d src/*.o src/*.d *.log
 
 test: $(TARGET)
 	sh test/run_examples.sh

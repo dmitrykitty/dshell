@@ -1,4 +1,5 @@
 dshell
+build/
 *.o
 *.d
 .sixth

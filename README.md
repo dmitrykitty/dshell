@@ -11,7 +11,7 @@ make
 Run it:
 
 ```sh
-./dshell
+./build/dshell
 ```
 
 Run the example test commands from this README:
