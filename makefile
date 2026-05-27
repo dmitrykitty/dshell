@@ -28,9 +28,12 @@ $(TARGET): $(OBJS)
 clean:
 	rm -f $(TARGET) $(OBJS) $(DEPS) *.o *.d *.log
 
+test: $(TARGET)
+	sh test/run_examples.sh
+
 debug: CFLAGS += $(DEBUG_FLAGS)
 debug: clean $(TARGET)
 
-.PHONY: clean debug
+.PHONY: clean debug test
 
 -include $(DEPS)

@@ -12,3 +12,5 @@ dshell
 
 *.log
 .dshell_history
+test/bin/
+test/tmp/
