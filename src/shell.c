@@ -25,6 +25,10 @@ void start_shell_loop(){
     job_table_init(&state.jobs);
     signals_init();
 
+    if (logger_init(&state.logger, ".dshell.log") != 0) {
+        fprintf(stderr, "warning: logger disabled\n");
+    }
+
     char history_path[MAX_LINE_LENGTH];
     if (history_default_path(history_path, MAX_LINE_LENGTH) == 0) {
         history_load(&state.history, history_path);
@@ -60,6 +64,7 @@ void start_shell_loop(){
             continue;
         }
 
+        logger_logf(&state.logger, "command: %s", command_text);
         history_add(&state.history, trimmed);
         history_save_line(history_path, trimmed);
         
@@ -93,6 +98,9 @@ void start_shell_loop(){
 
         execute_external(cmd, &state, command_text);
     }
+    
+    logger_log(&state.logger, "shell stopped");
+    logger_shutdown(&state.logger);
 
     free(line);
 }
